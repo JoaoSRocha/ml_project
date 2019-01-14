@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import minmax_scale
-from fancyimpute import IterativeImputer
+#from fancyimpute import IterativeImputer
 import os
 
 dataset_file = os.curdir + '/dataset/risk_factors_cervical_cancer.csv'

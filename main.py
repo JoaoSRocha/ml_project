@@ -10,12 +10,13 @@ with warnings.catch_warnings():
     #     results, table = classic_classifiers(screening=comb)
     #     print(table)
     # feature_selection()
-
+    results, table = classic_classifiers(screening='')
+    print(table)
     # select_reduce_classify()
     #smoteenn_sffs_reduction_classify_full()
     #feature_transform()
     #feature_selection_filter()
 
-    risk_probability_and_screening_dataset()
+    #risk_probability_and_screening_dataset()
     #final_pipeline()
 

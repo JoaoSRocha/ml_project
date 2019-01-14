@@ -1,6 +1,6 @@
 import keras
 from keras.layers import Input, Dense
-from keras.models import Model
+from keras.models import Model,Sequential
 from keras.callbacks import TensorBoard
 import numpy as np
 import readers
@@ -22,16 +22,29 @@ class AutoEncoder:
         print(self.x)
 
     def _encoder(self):
-        inputs = Input(shape=(self.x[0].shape))
-        encoded = Dense(self.encoding_dim, activation='relu')(inputs)
-        model = Model(inputs, encoded)
+        #inputs = Input(shape=(self.x[0].shape))
+        encoded_l1 = Dense(self.encoding_dim+4, activation='relu',input_shape=self.x[0].shape)
+        model = Sequential()
+        model.add(encoded_l1)
+        encoded_l2 = Dense(self.encoding_dim+2,activation='relu')
+        model.add(encoded_l2)
+        encoded_l3 =Dense(self.encoding_dim,activation='relu')
+        model.add(encoded_l3)
+
+
         self.encoder = model
         return model
 
     def _decoder(self):
-        inputs = Input(shape=(self.encoding_dim,))
-        decoded = Dense(32)(inputs)
-        model = Model(inputs, decoded)
+        #inputs = Input(shape=(self.encoding_dim,))
+        encoded_l1 = Dense(7, activation='relu',input_shape=(self.encoding_dim,))
+        model = Sequential()
+        model.add(encoded_l1)
+        encoded_l2 = Dense(9, activation='relu')
+        model.add(encoded_l2)
+        encoded_l3 = Dense(11, activation='relu')
+        model.add(encoded_l3)
+
         self.decoder = model
         return model
 
@@ -66,10 +79,10 @@ class AutoEncoder:
             self.model.save(r'./weights/ae_weights.h5')
 
 
-if __name__ == '__main__':
-    (X, Y), feature_names = readers.read_dataset(screening='')
-    seedy(2)
-    ae = AutoEncoder(encoding_dim=16, data=X)
-    ae.encoder_decoder()
-    ae.fit(batch_size=20, epochs=1000)
-    ae.save()
+# if __name__ == '__main__':
+#     (X, Y), feature_names = readers.read_dataset(screening='')
+#     seedy(2)
+#     ae = AutoEncoder(encoding_dim=16, data=X)
+#     ae.encoder_decoder()
+#     ae.fit(batch_size=20, epochs=1000)
+#     ae.save()

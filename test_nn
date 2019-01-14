@@ -1,5 +1,6 @@
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
 from sklearn import metrics
 from sklearn.model_selection import GridSearchCV
 from classification import process_results
@@ -7,14 +8,19 @@ import datetime
 import numpy as np
 import readers
 import pickle as pkl
-
+from keras.models import load_model
+from autoencoder import AutoEncoder,seedy
 
 # asd = pkl.load(open('rfecv_svm.pkl','rb'))
 # print(asd.k_feature_idx_)
 def test_nn_classfication():
-    (X, Y), feature_names = readers.read_dataset(screening='')
+    (X_raw, Y), feature_names = readers.read_dataset(screening='')
     n_shuffles = 10
-    X_select = feature_selection(X)
+    X_select = feature_selection(X_raw)
+    encoder_training(X_select,5)
+    encoder = load_model('weights/encoder_weights.h5')
+
+    X = encoder.predict(X_select)
     ssf = StratifiedShuffleSplit(n_splits=n_shuffles, test_size=.3)  # 10 splits to calculate the average metrics
     cv = 3  # internal number of folds for cross validation
 
@@ -80,7 +86,18 @@ def test_nn_classfication():
     #                                      #'random_state': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}))
     # ]
 
-    models = [('MLP', MLPClassifier(alpha=1e-06, hidden_layer_sizes=14, max_iter=2000, solver='adam'))]
+    #models = [('MLP', MLPClassifier(alpha=1e-06, hidden_layer_sizes=14, max_iter=2000, solver='adam'))]
+    models =[('SVM',
+             GridSearchCV(estimator=SVC(gamma='scale',
+                                        probability=True
+                                        ),
+                          cv=cv,
+                          refit=True,
+                          n_jobs=-1,
+                          param_grid={'C': np.logspace(-3, 3, num=7),
+                                      'kernel': ['rbf', 'linear'],
+                                      }
+                          ))]
     results = {m_name: np.zeros(6) for m_name, _ in models}
     results.update({m_name + '_params': list() for m_name, m in models if type(m) == GridSearchCV})
 
@@ -132,14 +149,19 @@ def test_nn_classfication():
 
 
 def feature_selection(data):
-    feature_selection_model = pkl.load(open('smoteenn_sfs.pkl', 'rb'))#rfecv_svm.pkl
+    feature_selection_model = pkl.load(open('results/smoteenn_sfs.pkl', 'rb'))#rfecv_svm.pkl
     best_features = feature_selection_model.k_feature_idx_
     data = data[:, best_features]
     # i=0
     return data
-
-
-test_nn_classfication()
+def encoder_training(X,encoding_dim):
+    seedy(2)
+    ae = AutoEncoder(encoding_dim=encoding_dim, data=X)
+    ae.encoder_decoder()
+    ae.fit(batch_size=20, epochs=1000)
+    ae.save()
+if __name__ == '__main__':
+    test_nn_classfication()
 # feature_selection_model= pkl.load(open('smoteenn_sfs.pkl', 'rb'))
 #
 # print(feature_selection_model.k_feature_idx_)

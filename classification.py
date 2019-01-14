@@ -93,13 +93,13 @@ def classic_classifiers(save=True, folder_path='results/', screening='HSC'):
     results.update({m_name+'_params': list() for m_name, m in models if type(m) == GridSearchCV})
 
     # perform train_test_split 10 times to achieve an average result
-    for fold_n, (train_ix, test_ix) in enumerate(ssf.split(X, Y)):
+    for fold_n, (train_ix, test_ix) in enumerate(ssf.split(X[0], X[1])):
         print('\nfold number', fold_n)
 
-        Xtrain = X[train_ix]
-        Ytrain = Y[train_ix]
-        Xtest = X[test_ix]
-        Ytest = Y[test_ix]
+        Xtrain = X[0][train_ix]
+        Ytrain = X[1][train_ix]
+        Xtest = X[0][test_ix]
+        Ytest = X[1][test_ix]
 
         for model_name, model in models:
             print(model_name)
@@ -122,6 +122,7 @@ def classic_classifiers(save=True, folder_path='results/', screening='HSC'):
 
             if type(model) == GridSearchCV:
                 results[model_name + '_params'].append(model.best_params_)
+                print(model.best_params_)
 
             results[model_name] += metrics_vector / n_shuffles  # performs average by summing
 
