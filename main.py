@@ -9,10 +9,13 @@ with warnings.catch_warnings():
     # for comb in ['', 'H', 'S', 'C', 'HS', 'HC', 'SC', 'HSC']:
     #     results, table = classic_classifiers(screening=comb)
     #     print(table)
-    #results, table = classic_classifiers(screening='')
-    #print(table)
-    #feature_selection(screening='')
+    # feature_selection()
 
-    #select_reduce_classify()
-    smoteenn_sffs_reduction_classify_full()
+    # select_reduce_classify()
+    #smoteenn_sffs_reduction_classify_full()
+    #feature_transform()
+    #feature_selection_filter()
+
+    risk_probability_and_screening_dataset()
+    #final_pipeline()
 
