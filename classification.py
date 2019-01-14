@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import datetime
 import pickle
 from collections import Counter
@@ -16,6 +16,7 @@ from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.svm import SVC
@@ -33,72 +34,80 @@ def classic_classifiers(save=True, folder_path='results/', screening='HSC'):
     ssf = StratifiedShuffleSplit(n_splits=n_shuffles, test_size=.3)  # 10 splits to calculate the average metrics
     cv = 3  # internal number of folds for cross validation
 
-    models = [('Naive_Bayes',
-               GaussianNB()),
+    # models = [   ('Naive_Bayes',
+    #     #            GaussianNB()),
+    #     #
+    #     #           ('Forest',
+    #     #            GridSearchCV(estimator=RandomForestClassifier(),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'n_estimators': [10, 50, 100, 200],
+    #     #                                     'max_depth': [None, 2, 5, 10]
+    #     #                                     }
+    #     #                         )),
+    #     #
+    #     #           ('LogReg',
+    #     #            GridSearchCV(estimator=LogisticRegression(max_iter=1000,
+    #     #                                                      solver='lbfgs'),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'C': np.logspace(-3, 3, num=7)
+    #     #                                     }
+    #     #                         )),
+    #     #
+    #     #           ('LDA',
+    #     #            GridSearchCV(estimator=LinearDiscriminantAnalysis(solver='lsqr'),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'n_components': [2, 5, 10, 20, 30],
+    #     #                                     'shrinkage': np.linspace(0, 1, 5)
+    #     #                                     }
+    #     #                         )),
+    #     #
+    #     #           ('KNN',
+    #     #            GridSearchCV(estimator=KNeighborsClassifier(),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'n_neighbors': [3, 5, 11, 21]
+    #     #                                     }
+    #     #                         )),
+    #     #
+    #     #           ('SVM',
+    #     #            GridSearchCV(estimator=SVC(gamma='scale',
+    #     #                                       probability=True
+    #     #                                       ),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'C': np.logspace(-3, 3, num=7),
+    #     #                                     'kernel': ['rbf', 'linear'],
+    #     #                                     }
+    #     #                         )),
+    #     ###
+    #     ('MLP', GridSearchCV(estimator=MLPClassifier(), cv=cv, refit=True, n_jobs=1,
+    #                          param_grid={'solver': ['adam'],
+    #                                      'max_iter': [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900,
+    #                                                   2000], 'alpha': 10.0 ** -np.arange(1, 10),
+    #                                      'hidden_layer_sizes': np.arange(10, 15)}))#,
+    #                                      #'random_state': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}))
+    # ]
 
-              ('Forest',
-               GridSearchCV(estimator=RandomForestClassifier(),
-                            cv=cv,
-                            refit=True,
-                            n_jobs=-1,
-                            param_grid={'n_estimators': [10, 50, 100, 200],
-                                        'max_depth': [None, 2, 5, 10]
-                                        }
-                            )),
-
-              ('LogReg',
-               GridSearchCV(estimator=LogisticRegression(max_iter=1000,
-                                                         solver='lbfgs'),
-                            cv=cv,
-                            refit=True,
-                            n_jobs=-1,
-                            param_grid={'C': np.logspace(-3, 3, num=7)
-                                        }
-                            )),
-
-              ('LDA',
-               GridSearchCV(estimator=LinearDiscriminantAnalysis(solver='lsqr'),
-                            cv=cv,
-                            refit=True,
-                            n_jobs=-1,
-                            param_grid={'n_components': [2, 5, 10, 20, 30],
-                                        'shrinkage': np.linspace(0, 1, 5)
-                                        }
-                            )),
-
-              ('KNN',
-               GridSearchCV(estimator=KNeighborsClassifier(),
-                            cv=cv,
-                            refit=True,
-                            n_jobs=-1,
-                            param_grid={'n_neighbors': [3, 5, 11, 21]
-                                        }
-                            )),
-
-              ('SVM',
-               GridSearchCV(estimator=SVC(gamma='scale',
-                                          probability=True
-                                          ),
-                            cv=cv,
-                            refit=True,
-                            n_jobs=-1,
-                            param_grid={'C': np.logspace(-3, 3, num=7),
-                                        'kernel': ['rbf', 'linear'],
-                                        }
-                            ))
-              ]
-
+    models = [('MLP', MLPClassifier(alpha=1e-06, hidden_layer_sizes=14, max_iter=2000, solver='adam'))]
     results = {m_name: np.zeros(6) for m_name, _ in models}
-    results.update({m_name+'_params': list() for m_name, m in models if type(m) == GridSearchCV})
+    results.update({m_name + '_params': list() for m_name, m in models if type(m) == GridSearchCV})
 
     # perform train_test_split 10 times to achieve an average result
-    for fold_n, (train_ix, test_ix) in enumerate(ssf.split(X, Y)):
+    for fold_n, (train_ix, test_ix) in enumerate(ssf.split(X[0], X[1])):
         print('\nfold number', fold_n)
 
-        Xtrain = X[train_ix]
-        Ytrain = Y[train_ix]
-        Xtest = X[test_ix]
-        Ytest = Y[test_ix]
+        Xtrain = X[0][train_ix]
+        Ytrain = X[1][train_ix]
+        Xtest = X[0][test_ix]
+        Ytest = X[1][test_ix]
 
         for model_name, model in models:
             print(model_name)
@@ -130,9 +139,9 @@ def classic_classifiers(save=True, folder_path='results/', screening='HSC'):
 
     if save:
         now = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')
-        with open(folder_path+'classic_results_' + now + '.pkl', 'wb') as f:
+        with open(folder_path + 'classic_results_' + now + '.pkl', 'wb') as f:
             pickle.dump(results, f, -1)
-        table.to_csv(folder_path+'classic_results_' + now + '.csv')
+        table.to_csv(folder_path + 'classic_results_' + now + '.csv')
 
     return results, table
 
@@ -162,7 +171,7 @@ def isomap():
     Xtrain, Xtest, Ytrain, Ytest = train_test_split(X, Y, stratify=Y, test_size=.5)
 
     pipe = Pipeline([('embedding', Isomap()), ('clf', SVC(probability=True, gamma='scale'))])
-    params = {'embedding__n_components':[2, 5, 10, 20],
+    params = {'embedding__n_components': [2, 5, 10, 20],
               'clf__C': np.logspace(-4, 4, 9)}
     grid_search = GridSearchCV(pipe, cv=5, param_grid=params, n_jobs=-1, verbose=10, refit=True, scoring='recall')
     grid_search.fit(Xtrain, Ytrain)
@@ -170,7 +179,8 @@ def isomap():
 
 def feature_selection():
     X, Y = read_dataset()
-    feature_names = np.array(list(pd.read_csv('./dataset/risk_factors_cervical_cancer.csv', header=0, index_col=None))[:-1])
+    feature_names = np.array(
+        list(pd.read_csv('./dataset/risk_factors_cervical_cancer.csv', header=0, index_col=None))[:-1])
 
     selector = SelectPercentile(score_func=mutual_info_classif, percentile=50)
     selector.fit(X, Y)
@@ -178,9 +188,11 @@ def feature_selection():
     removed = np.logical_not(selector.get_support())
     print('removed features', feature_names[removed])
     scores, feature_names = zip(*sorted(zip(scores, feature_names)))
-    plt.figure()
-    plt.barh(feature_names, scores)
-    plt.show()
+
+
+# plt.figure()
+# plt.barh(feature_names, scores)
+# plt.show()
 
 
 def select_reduce_classify():
@@ -193,30 +205,30 @@ def select_reduce_classify():
                      ('classification', SVC(gamma='scale', probability=True))])
 
     pipe_params = [{
-                    'classification__C': np.logspace(-3, 3, num=7),
-                    'classification__kernel': ['rbf', 'linear']},
+        'classification__C': np.logspace(-3, 3, num=7),
+        'classification__kernel': ['rbf', 'linear']},
 
-                   {
-                    'selection': [SelectKBest(score_func=mutual_info_classif)],
-                    'selection__k': np.arange(5, 36, 5),
-                    'classification__C': np.logspace(-3, 3, num=7),
-                    'classification__kernel': ['rbf', 'linear']},
+        {
+            'selection': [SelectKBest(score_func=mutual_info_classif)],
+            'selection__k': np.arange(5, 36, 5),
+            'classification__C': np.logspace(-3, 3, num=7),
+            'classification__kernel': ['rbf', 'linear']},
 
-                   {
-                    'reduction': [Isomap(n_jobs=-1)],
-                    'reduction__n_components': np.arange(5, 36, 5),
-                    'classification__C': np.logspace(-3, 3, num=7),
-                    'classification__kernel': ['rbf', 'linear']},
+        {
+            'reduction': [Isomap(n_jobs=-1)],
+            'reduction__n_components': np.arange(5, 36, 5),
+            'classification__C': np.logspace(-3, 3, num=7),
+            'classification__kernel': ['rbf', 'linear']},
 
-                   {
-                    'selection': [SelectKBest(score_func=mutual_info_classif)],
-                    'selection__k': np.arange(5, 36, 5),
-                    'reduction': [Isomap(n_jobs=-1)],
-                    'reduction__n_components': np.arange(5, 36, 5),
-                    'classification__C': np.logspace(-3, 3, num=7),
-                    'classification__kernel': ['rbf', 'linear']}
+        {
+            'selection': [SelectKBest(score_func=mutual_info_classif)],
+            'selection__k': np.arange(5, 36, 5),
+            'reduction': [Isomap(n_jobs=-1)],
+            'reduction__n_components': np.arange(5, 36, 5),
+            'classification__C': np.logspace(-3, 3, num=7),
+            'classification__kernel': ['rbf', 'linear']}
 
-                   ]
+    ]
 
     search = GridSearchCV(estimator=pipe,
                           param_grid=pipe_params,
@@ -234,7 +246,7 @@ def select_reduce_classify():
                                    'neg_log_loss'],
                           error_score=0)
 
-    search.fit(X, Y)
+    search.fit(X[0], X[1])
 
     results = search.cv_results_
 
@@ -246,7 +258,6 @@ def select_reduce_classify():
 
 
 def smoteenn_sffs_reduction_classify_full():
-
     (X, Y), feature_names = read_dataset(screening='')  # no screening results, only risk factors
 
     # dataset resampling for imbalanced data compensation
@@ -266,29 +277,35 @@ def smoteenn_sffs_reduction_classify_full():
                'brier_score_loss',
                'neg_log_loss']
 
+    # param_grid = {'C': np.logspace(-1, 6, 8),
+    #     #               'kernel': ['rbf']}
+    param_grid ={'C': 1000000.0, 'kernel': 'rbf'}
+    # param_grid = {'solver': ['adam'],
+    #               'max_iter': [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900,
+    #                            2000], 'alpha': 10.0 ** -np.arange(1, 10),
+    #               'hidden_layer_sizes': np.arange(10, 15)}#,
+    # 'random_state': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}
 
-    param_grid = {'C': np.logspace(-1, 6, 8),
-                  'kernel': ['rbf']}
+    # grid = GridSearchCV(estimator=SVC(probability=True, gamma='scale'),
+    #                     param_grid=param_grid,
+    #                     n_jobs=-1,
+    #                     verbose=10,
+    #                     cv=5,
+    #                     scoring=scoring,
+    #                     refit='balanced_accuracy',
+    #                     iid=False,
+    #                     error_score=0)
 
-    grid = GridSearchCV(estimator=SVC(probability=True, gamma='scale'),
-                       param_grid=param_grid,
-                       n_jobs=-1,
-                       verbose=10,
-                       cv=5,
-                       scoring=scoring,
-                       refit='balanced_accuracy',
-                       iid=False,
-                       error_score=0)
-
-    grid.fit(Xres, Yres)
-    print(grid.best_params_)
-
-    clf = SVC(probability=True, gamma='scale', **grid.best_params_)
+    # grid.fit(Xres, Yres)
+    # print(grid.best_params_)
+    # {'alpha': 1e-07, 'hidden_layer_sizes': 14, 'max_iter': 1900, 'solver': 'adam'}
+    # {'C': 1000000.0, 'kernel': 'rbf'}
+    clf = SVC(probability=True,gamma='scale',**param_grid)
 
     selector = SequentialFeatureSelector(forward=True,
                                          floating=True,
                                          k_features='best',
-                                         verbose=2,
+                                         verbose=10,
                                          n_jobs=-1,
                                          cv=5,
                                          estimator=clf)
@@ -299,7 +316,3 @@ def smoteenn_sffs_reduction_classify_full():
 
     with open('smoteenn_sfs.pkl', 'wb') as f:
         pickle.dump(selector, f, -1)
-
-
-
-

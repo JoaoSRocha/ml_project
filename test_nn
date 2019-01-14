@@ -1,0 +1,145 @@
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.neural_network import MLPClassifier
+from sklearn import metrics
+from sklearn.model_selection import GridSearchCV
+from classification import process_results
+import datetime
+import numpy as np
+import readers
+import pickle as pkl
+
+
+# asd = pkl.load(open('rfecv_svm.pkl','rb'))
+# print(asd.k_feature_idx_)
+def test_nn_classfication():
+    (X, Y), feature_names = readers.read_dataset(screening='')
+    n_shuffles = 10
+    X_select = feature_selection(X)
+    ssf = StratifiedShuffleSplit(n_splits=n_shuffles, test_size=.3)  # 10 splits to calculate the average metrics
+    cv = 3  # internal number of folds for cross validation
+
+    # models = [   ('Naive_Bayes',
+    #     #            GaussianNB()),
+    #     #
+    #     #           ('Forest',
+    #     #            GridSearchCV(estimator=RandomForestClassifier(),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'n_estimators': [10, 50, 100, 200],
+    #     #                                     'max_depth': [None, 2, 5, 10]
+    #     #                                     }
+    #     #                         )),
+    #     #
+    #     #           ('LogReg',
+    #     #            GridSearchCV(estimator=LogisticRegression(max_iter=1000,
+    #     #                                                      solver='lbfgs'),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'C': np.logspace(-3, 3, num=7)
+    #     #                                     }
+    #     #                         )),
+    #     #
+    #     #           ('LDA',
+    #     #            GridSearchCV(estimator=LinearDiscriminantAnalysis(solver='lsqr'),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'n_components': [2, 5, 10, 20, 30],
+    #     #                                     'shrinkage': np.linspace(0, 1, 5)
+    #     #                                     }
+    #     #                         )),
+    #     #
+    #     #           ('KNN',
+    #     #            GridSearchCV(estimator=KNeighborsClassifier(),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'n_neighbors': [3, 5, 11, 21]
+    #     #                                     }
+    #     #                         )),
+    #     #
+    #     #           ('SVM',
+    #     #            GridSearchCV(estimator=SVC(gamma='scale',
+    #     #                                       probability=True
+    #     #                                       ),
+    #     #                         cv=cv,
+    #     #                         refit=True,
+    #     #                         n_jobs=-1,
+    #     #                         param_grid={'C': np.logspace(-3, 3, num=7),
+    #     #                                     'kernel': ['rbf', 'linear'],
+    #     #                                     }
+    #     #                         )),
+    #     ###
+    #     ('MLP', GridSearchCV(estimator=MLPClassifier(), cv=cv, refit=True, n_jobs=1,
+    #                          param_grid={'solver': ['adam'],
+    #                                      'max_iter': [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900,
+    #                                                   2000], 'alpha': 10.0 ** -np.arange(1, 10),
+    #                                      'hidden_layer_sizes': np.arange(10, 15)}))#,
+    #                                      #'random_state': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}))
+    # ]
+
+    models = [('MLP', MLPClassifier(alpha=1e-06, hidden_layer_sizes=14, max_iter=2000, solver='adam'))]
+    results = {m_name: np.zeros(6) for m_name, _ in models}
+    results.update({m_name + '_params': list() for m_name, m in models if type(m) == GridSearchCV})
+
+    # perform train_test_split 10 times to achieve an average result
+    for fold_n, (train_ix, test_ix) in enumerate(ssf.split(X, Y)):
+        print('\nfold number', fold_n)
+
+        Xtrain = X[train_ix]
+        Ytrain = Y[train_ix]
+        Xtest = X[test_ix]
+        Ytest = Y[test_ix]
+
+        for model_name, model in models:
+            print(model_name)
+            model.fit(Xtrain, Ytrain)
+            Ypred = model.predict(Xtest)
+            Yprob = model.predict_proba(Xtest)
+
+            pos_ratio = np.mean(Ytest == 1)
+            sample_weight = pos_ratio * np.ones(Ytest.shape[0])
+            sample_weight[Ytest == 1] = 1. - pos_ratio
+
+            metrics_vector = np.array(
+                [metrics.accuracy_score(Ytest, Ypred),
+                 metrics.precision_score(Ytest, Ypred),
+                 metrics.recall_score(Ytest, Ypred),
+                 metrics.average_precision_score(Ytest, Yprob[:, 1]),
+                 metrics.brier_score_loss(Ytest, Yprob[:, 1], sample_weight=sample_weight),
+                 metrics.log_loss(Ytest, Yprob[:, 1]),
+                 ])
+
+            if type(model) == GridSearchCV:
+                results[model_name + '_params'].append(model.best_params_)
+
+            results[model_name] += metrics_vector / n_shuffles  # performs average by summing
+
+    print('Classifiers Trained\n')
+
+    table = process_results(results)
+    save = True
+    folder_path = 'results/'
+    if save:
+        now = datetime.datetime.now().strftime('%Y_%m_%d_%H_%M')
+        with open(folder_path + 'classic_results_' + now + '.pkl', 'wb') as f:
+            pkl.dump(results, f, -1)
+        table.to_csv(folder_path + 'classic_results_' + now + '.csv')
+
+    return results, table
+
+
+def feature_selection(data):
+    feature_selection_model = pkl.load(open('smoteenn_sfs.pkl', 'rb'))#rfecv_svm.pkl
+    best_features = feature_selection_model.k_feature_idx_
+    data = data[:, best_features]
+    # i=0
+    return data
+
+
+test_nn_classfication()
+# feature_selection_model= pkl.load(open('smoteenn_sfs.pkl', 'rb'))
+#
+# print(feature_selection_model.k_feature_idx_)

@@ -13,6 +13,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.neighbors import KNeighborsClassifier
+### JR
+from sklearn.neural_network import MLPClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.svm import SVC
 
